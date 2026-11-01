@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>KLIKI Meta Ads</title>
+  <meta name="description" content="Prestasi iklan Meta (click-to-WhatsApp) KLIKI">
+  <meta name="theme-color" content="#0A2E8A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="KLIKI Ads">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+  <div id="pin-screen" class="pin-wrap" hidden>
+    <form class="pin-card" id="pin-form" autocomplete="off">
+      <span class="pin-logo"><img src="icons/logo-white.png" alt="KLIKI" width="98" height="28"></span>
+      <h1>Meta Ads Performance</h1>
+      <p>Masukkan PIN untuk lihat prestasi iklan.</p>
+      <label class="sr" for="pin-input">PIN</label>
+      <input id="pin-input" type="password" inputmode="numeric" maxlength="12" required>
+      <button type="submit">Masuk</button>
+      <div class="err" id="pin-err" role="alert"></div>
+    </form>
+  </div>
+
+  <div class="app" id="app" hidden>
+    <aside class="side" aria-label="Navigasi utama">
+      <div class="side-brand">
+        <img class="logo" src="icons/logo-white.png" alt="KLIKI" width="98" height="28">
+        <span class="side-tag">Meta Ads</span>
+      </div>
+      <nav class="tabs" aria-label="Seksyen">
+        <span class="nav-h">Prestasi</span>
+        <button data-tab="ringkasan" class="active">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12l9-8 9 8M5 10.5V20h5v-6h4v6h5v-9.5"/></svg>
+          <span>Ringkasan</span>
+        </button>
+        <button data-tab="outlet">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9h16v2a2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1-5 0 2.5 2.5 0 0 1-6 0zm1 4v7h14v-7"/></svg>
+          <span>Outlet</span>
+        </button>
+        <button data-tab="kategori">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h6V4H4zm10 7h6v-9h-6zM4 20h6v-4H4zm10-11h6V4h-6z"/></svg>
+          <span>Kategori</span>
+        </button>
+        <button data-tab="iklan">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          <span>Iklan</span>
+        </button>
+      </nav>
+      <div class="side-foot">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span>Data terus dari Meta</span>
+      </div>
+    </aside>
+
+    <div class="main-col">
+      <header class="top">
+        <div class="brand">
+          <img class="logo m-logo" src="icons/logo-white.png" alt="KLIKI" width="98" height="28">
+          <div class="ttl">
+            <h1 id="page-title">Ringkasan</h1>
+            <span id="status-line" class="status-line" role="status"></span>
+          </div>
+        </div>
+        <div class="controls">
+          <label class="sr" for="period">Tempoh</label>
+          <select id="period" aria-label="Pilih tempoh">
+            <option value="maximum">Sejak mula</option>
+            <option value="today">Hari ini</option>
+            <option value="yesterday">Semalam</option>
+            <option value="last_7d">7 hari lepas</option>
+            <option value="last_14d">14 hari lepas</option>
+            <option value="this_month">Bulan ini</option>
+            <option value="last_month">Bulan lepas</option>
+          </select>
+          <button id="info" class="icon-btn" aria-label="Panduan & tetapan" title="Panduan">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button id="refresh" class="icon-btn" aria-label="Muat semula data" title="Muat semula">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="view" tabindex="-1">
+        <div class="loading"><div class="spinner"></div><p>Memuatkan data dari Meta…</p></div>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="info-dlg" aria-labelledby="info-title">
+    <div class="dlg-head"><b id="info-title">Panduan</b><button id="info-close" class="x" aria-label="Tutup">✕</button></div>
+    <div id="info-body"></div>
+  </dialog>
+
+  <div id="tip" class="tip" role="tooltip" hidden></div>
+
+  <script src="js/config.js?v=1"></script>
+  <script src="js/app.js?v=1"></script>
+  <script>
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  </script>
+</body>
+</html>
