@@ -1,5 +1,5 @@
 // Service worker: simpan app shell untuk buka laju. Data Meta (Apps Script) sentiasa dari network.
-const CACHE = 'kliki-ads-shell-v1';
+const CACHE = 'kliki-ads-shell-v2';
 const SHELL = ['./', 'index.html', 'styles.css?v=1', 'js/config.js?v=1', 'js/app.js?v=1', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/logo-white.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

@@ -441,3 +441,10 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
 .pin-card input { width: 100%; font: 700 22px Inter, system-ui, sans-serif; letter-spacing: .3em; text-align: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: var(--text); }
 .pin-card button { width: 100%; margin-top: 12px; font: 700 15px Inter, system-ui, sans-serif; color: #fff; background: var(--brand); border: 0; border-radius: 12px; padding: 13px; cursor: pointer; }
 .pin-card .err { color: var(--bad); font-size: 13px; font-weight: 600; min-height: 20px; margin-top: 10px; }
+
+/* jadual kategori dalam kad outlet */
+table.oc-cat { margin-top: 12px; font-size: 13px; }
+table.oc-cat th, table.oc-cat td { padding: 7px 8px; }
+table.oc-cat th:first-child, table.oc-cat td:first-child { padding-left: 0; text-align: left; }
+table.oc-cat td .sub { display: block; font-size: 11px; color: var(--muted); }
+table.oc-cat .pill { font-size: 10px; padding: 1px 6px; }

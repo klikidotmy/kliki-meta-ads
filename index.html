@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=1">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
   <div id="pin-screen" class="pin-wrap" hidden>
@@ -58,7 +58,7 @@
       </nav>
       <div class="side-foot">
         <span class="live-dot" aria-hidden="true"></span>
-        <span>Data terus dari Meta</span>
+        <span id="src-line">Data dari Meta</span>
       </div>
     </aside>
 
@@ -104,8 +104,8 @@
 
   <div id="tip" class="tip" role="tooltip" hidden></div>
 
-  <script src="js/config.js?v=1"></script>
-  <script src="js/app.js?v=1"></script>
+  <script src="js/config.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
   <script>
     if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   </script>

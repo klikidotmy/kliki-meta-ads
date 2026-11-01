@@ -26,7 +26,15 @@
   const PERIOD_LABEL = { maximum: 'Sejak mula', today: 'Hari ini', yesterday: 'Semalam', last_7d: '7 hari lepas', last_14d: '14 hari lepas', this_month: 'Bulan ini', last_month: 'Bulan lepas' };
   const STATUS = { ACTIVE: ['Aktif', 'good'], PAUSED: ['Dihentikan', 'na'], CAMPAIGN_PAUSED: ['Kempen henti', 'na'], ADSET_PAUSED: ['Ad set henti', 'na'], WITH_ISSUES: ['Ada isu', 'bad'], DISAPPROVED: ['Ditolak', 'bad'], PENDING_REVIEW: ['Disemak', 'warn'], IN_PROCESS: ['Diproses', 'warn'], ARCHIVED: ['Arkib', 'na'], DELETED: ['Dipadam', 'na'] };
   const statusPill = (s) => { const m = STATUS[s] || [s || '—', 'na']; return `<span class="pill ${m[1]}">${esc(m[0])}</span>`; };
-  const shortOutlet = (n) => {
+  const OUTLET_NAME = C.outletNames || { SP: 'Sungai Petani', AS: 'Alor Setar', KLL: 'Kelang Lama', PDG: 'Pendang' };
+  // Nama ad set: "SP | Beli Phone" → { code: 'SP', cat: 'Beli Phone' }
+  const splitAdset = (n) => {
+    const p = String(n || '').split('|').map((x) => x.trim()).filter(Boolean);
+    return p.length > 1 ? { code: p[0], cat: p.slice(1).join(' · ') } : { code: shortOutletOld(n), cat: 'Semua' };
+  };
+  const outletName = (code) => OUTLET_NAME[code] || code;
+  const shortOutlet = (n) => { const a = splitAdset(n); return a.cat === 'Semua' ? a.code : `${outletName(a.code)} · ${a.cat}`; };
+  const shortOutletOld = (n) => {
     let s = String(n || '');
     if (s.includes(' - ')) s = s.split(' - ').slice(1).join(' - ');
     return s.replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s+\d+\s?km.*$/i, '').trim() || String(n || '—');
@@ -56,12 +64,21 @@
     k.spendPct = k.budget ? a.spend / k.budget : null;
     k.chatPct = k.chatTarget ? a.chats / k.chatTarget : null;
     k.clickPct = k.clickTarget ? a.link_clicks / k.clickTarget : null;
-    const adsets = (d.adsets || []).map((s) => ({ ...s, label: shortOutlet(s.name), cpr: s.chats ? s.spend / s.chats : null, rate: div(s.chats, s.link_clicks) }));
-    const withChat = adsets.filter((s) => s.cpr != null).sort((x, y) => x.cpr - y.cpr);
+    const adsets = (d.adsets || []).map((s) => ({ ...s, ...splitAdset(s.name), label: shortOutlet(s.name), cpr: s.chats ? s.spend / s.chats : null, rate: div(s.chats, s.link_clicks) }));
+    // Satu outlet boleh ada beberapa ad set (satu setiap kategori): gabung ikut kod outlet
+    const om = new Map();
+    adsets.forEach((s) => {
+      const o = om.get(s.code) || { code: s.code, label: outletName(s.code), spend: 0, chats: 0, link_clicks: 0, impressions: 0, budget: 0, active: 0, rows: [] };
+      o.spend += s.spend || 0; o.chats += s.chats || 0; o.link_clicks += s.link_clicks || 0; o.impressions += s.impressions || 0;
+      if (s.status === 'ACTIVE') { o.active += 1; o.budget += s.daily_budget || 0; }
+      o.rows.push(s); om.set(s.code, o);
+    });
+    const outlets = [...om.values()].map((o) => ({ ...o, cpr: o.chats ? o.spend / o.chats : null, rate: div(o.chats, o.link_clicks) }));
+    const withChat = outlets.filter((s) => s.cpr != null).sort((x, y) => x.cpr - y.cpr);
     k.best = withChat[0] || null;
     k.worst = withChat.length > 1 ? withChat[withChat.length - 1] : null;
     const ads = (d.ads || []).map((r) => ({ ...r, ...parseAd(r.name), cpr: r.chats ? r.spend / r.chats : null }));
-    return { k, adsets, ads };
+    return { k, adsets, outlets, ads };
   }
 
   // ---------- bar prestasi ----------
@@ -116,6 +133,10 @@
     if (d.tokenDaysLeft != null && d.tokenDaysLeft <= 7) {
       h += `<div class="banner ${d.tokenDaysLeft <= 2 ? 'bad' : 'warn'}">⚠ Token Meta tamat dalam ${int(Math.max(0, d.tokenDaysLeft))} hari. Perbaharui token dan kemas kini META_TOKEN dalam Apps Script.</div>`;
     }
+    const ageH = d.updated ? (Date.now() - new Date(d.updated).getTime()) / 3600e3 : 0;
+    if (d.source === 'sheet' && ageH > 8) {
+      h += `<div class="banner warn">⚠ Data terakhir diambil ${int(ageH)} jam lalu. Tugasan berjadual mungkin terlepas satu run; data akan dikemas kini pada run seterusnya.</div>`;
+    }
     if (state.period !== 'today' && k.days && k.spendPct != null && k.spendPct < 0.5) {
       h += '<div class="banner warn">⚠ Belanja jauh bawah bajet. Semak baki prepaid akaun Meta, status iklan, dan saiz audiens.</div>';
     }
@@ -124,7 +145,7 @@
       : 'Belum ada chat dalam tempoh ini.';
     h += `<section class="ov-hero">
       <div class="ov-hero-top"><div><div class="ov-eb">Meta Ads · Click-to-WhatsApp</div><h2>${esc(PERIOD_LABEL[state.period] || state.period)}</h2><p>Akaun KLIKI Kedah · ${int(k.days)} hari aktif</p></div>
-      <span class="ov-badge">${d.cached ? 'Cache' : 'Live'} · ${new Date(d.updated).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</span></div>
+      <span class="ov-badge">${d.source === 'sheet' ? 'Snapshot' : d.cached ? 'Cache' : 'Live'} · ${new Date(d.updated).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</span></div>
       <div class="ov-hero-grid">
         <div class="ov-hs"><div class="ov-hv"><span>Chat WhatsApp</span><b>${int(k.chats)}</b><small>Keputusan kempen Meta</small></div></div>
         <div class="ov-hs"><div class="ov-hv"><span>Kos sechat</span><b>${rm(k.cpr)}</b><small>Sasaran bawah ${rm(T.costPerChat)}</small></div></div>
@@ -158,22 +179,27 @@
     const hrows = hourly.map((r) => ({ v: r.chats, label: String(r.hour).padStart(2, '0'), tip: `${String(r.hour).padStart(2, '0')}:00: ${int(r.chats)} chat · ${rm(r.spend)} · ${r.chats ? rm(r.spend / r.chats) + ' sechat' : 'tiada chat'}` }));
     h += `<h2>Trend</h2><div class="pair">
       <div class="card"><div class="card-h"><div><h3>Chat per hari</h3><div class="sub">Sentuh bar untuk belanja dan kos sechat</div></div></div>${barChart(daily, { aria: 'Chat WhatsApp setiap hari' })}</div>
-      <div class="card"><div class="card-h"><div><h3>Chat ikut jam</h3><div class="sub">${bestH >= 0 ? `Jam paling murah: <b>${esc(hrows[bestH].label)}:00</b> (${rm(bestCpr)} sechat)` : 'Waktu iklan menghasilkan chat'}</div></div></div>${barChart(hrows, { aria: 'Chat ikut jam', highlight: bestH >= 0 ? bestH : null })}</div>
+      <div class="card"><div class="card-h"><div><h3>Chat ikut jam</h3><div class="sub">${d.hourlyScope === 'maximum' && state.period !== 'maximum' ? 'Sejak mula (pecahan jam hanya ada untuk keseluruhan). ' : ''}${bestH >= 0 ? `Jam paling murah: <b>${esc(hrows[bestH].label)}:00</b> (${rm(bestCpr)} sechat)` : 'Waktu iklan menghasilkan chat'}</div></div></div>${barChart(hrows, { aria: 'Chat ikut jam', highlight: bestH >= 0 ? bestH : null })}</div>
     </div>
     <p class="chart-cap">"Chat" ialah keputusan Meta (messaging conversations started, atribusi lalai Meta). Ia bukan lead yang disahkan outlet: padankan dengan kod [FB-xx] dalam Outlet Tracker sebelum buat keputusan bajet.</p>`;
     return h;
   }
 
   function viewOutlet(d, c) {
-    const rows = c.adsets.slice().sort((x, y) => (x.cpr == null) - (y.cpr == null) || (x.cpr || 0) - (y.cpr || 0));
+    const rows = c.outlets.slice().sort((x, y) => (x.cpr == null) - (y.cpr == null) || (x.cpr || 0) - (y.cpr || 0));
     if (!rows.length) return '<div class="card empty">Tiada ad set dalam tempoh ini.</div>';
     const M = C.meters;
-    return `<h2>Prestasi ikut outlet <span class="note">· satu ad set = satu outlet, disusun dari paling murah</span></h2><div class="ocards">${rows.map((s) => {
-      const m = meter(M.cpr, s.cpr, `Sasaran bawah ${rm(M.cpr.segs[0][0])} · lemah atas ${rm(M.cpr.segs[1][0])}`);
-      return `<div class="card"><div class="oc-h"><div><h3>${esc(s.label)}</h3><div class="sub">${esc(s.name)}${s.daily_budget != null ? ' · ' + rm(s.daily_budget) + '/hari' : ''}</div></div>${statusPill(s.status)}</div>
-        <div class="oc-stats"><div><span>Belanja</span><b>${rm(s.spend)}</b></div><div><span>Chat</span><b>${int(s.chats)}</b></div><div><span>Kos sechat</span><b>${rm(s.cpr)}</b></div></div>
+    return `<h2>Prestasi ikut outlet <span class="note">· disusun dari paling murah sechat</span></h2><div class="ocards">${rows.map((o) => {
+      const m = meter(M.cpr, o.cpr, `Sasaran bawah ${rm(M.cpr.segs[0][0])} · lemah atas ${rm(M.cpr.segs[1][0])}`);
+      const cats = o.rows.slice().sort((x, y) => (y.spend || 0) - (x.spend || 0));
+      return `<div class="card"><div class="oc-h"><div><h3>${esc(o.label)}</h3><div class="sub">${esc(o.code)} · ${int(o.rows.length)} kategori${o.budget ? ' · bajet ' + rm(o.budget) + '/hari' : ''}</div></div><span class="pill ${o.active ? 'good' : 'na'}">${o.active ? int(o.active) + ' aktif' : 'Tiada aktif'}</span></div>
+        <div class="oc-stats"><div><span>Belanja</span><b>${rm(o.spend)}</b></div><div><span>Chat</span><b>${int(o.chats)}</b></div><div><span>Kos sechat</span><b>${rm(o.cpr)}</b></div></div>
         ${m.html}
-        <div class="oc-more"><span>Klik pautan <b>${int(s.link_clicks)}</b></span><span>Klik → chat <b>${pct(s.rate, 1)}</b></span><span>Reach <b>${int(s.reach)}</b></span><span>Freq <b>${dec(s.frequency)}</b></span><span>CPM <b>${rm(s.cpm)}</b></span></div></div>`;
+        <div class="tbl-wrap"><table class="oc-cat"><thead><tr><th>Kategori</th><th>Belanja</th><th>Chat</th><th>Kos sechat</th></tr></thead><tbody>${cats.map((s) => {
+          const z = s.cpr == null ? (s.spend > 0 ? 'bad' : '') : statusOf(M.cpr, s.cpr);
+          return `<tr><td>${esc(s.cat)}${s.status !== 'ACTIVE' ? ' ' + statusPill(s.status) : ''}<span class="sub">${s.daily_budget != null ? rm(s.daily_budget) + '/hari' : ''}</span></td><td>${rm(s.spend)}</td><td>${int(s.chats)}</td><td class="${z}">${rm(s.cpr)}</td></tr>`;
+        }).join('')}</tbody></table></div>
+        <div class="oc-more"><span>Klik pautan <b>${int(o.link_clicks)}</b></span><span>Klik → chat <b>${pct(o.rate, 1)}</b></span><span>Impressions <b>${int(o.impressions)}</b></span></div></div>`;
     }).join('')}</div>`;
   }
 
@@ -191,7 +217,7 @@
     });
     const W = C.winner;
     let h = `<h2>Kategori & angle <span class="note">· kategori = padang, angle = pemain. Semua padang mesti berjalan.</span></h2>
-      <div class="controls" style="margin:0 0 12px"><label class="sr" for="cat-outlet">Outlet</label><select id="cat-outlet"><option value="ALL">Semua outlet</option>${outlets.map((o) => `<option value="${esc(o)}"${o === state.catOutlet ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
+      <div class="controls" style="margin:0 0 12px"><label class="sr" for="cat-outlet">Outlet</label><select id="cat-outlet"><option value="ALL">Semua outlet</option>${outlets.map((o) => `<option value="${esc(o)}"${o === state.catOutlet ? ' selected' : ''}>${esc(outletName(o))}</option>`).join('')}</select></div>`;
     if (!cats.size) return h + '<div class="card empty">Tiada iklan dalam tempoh ini.</div>';
     h += '<div class="ocards">';
     [...cats.values()].sort((x, y) => y.spend - x.spend).forEach((g) => {
@@ -286,12 +312,22 @@
         return;
       }
       state.data = d;
-      setStatus(`${PERIOD_LABEL[state.period]} · dikemas kini ${new Date(d.updated).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}`);
+      applyPeriods(d);
+      $('#src-line').textContent = d.source === 'sheet' ? 'Snapshot Meta, 4× sehari' : 'Data terus dari Meta';
+      setStatus(`${PERIOD_LABEL[state.period]} · ${d.source === 'sheet' ? 'snapshot' : 'dikemas kini'} ${new Date(d.updated).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}`);
       render();
     } catch (e) {
       showError('Tak dapat sambung ke server', 'Semak internet, atau pastikan Web App Apps Script di-deploy dengan akses "Anyone".');
       setStatus('Tiada sambungan', true);
     } finally { btn.classList.remove('spin'); }
+  }
+
+  // Mod snapshot hanya ada sebahagian tempoh: sembunyikan yang lain
+  function applyPeriods(d) {
+    const ok = d.periods || Object.keys(PERIOD_LABEL);
+    $$('#period option').forEach((o) => { o.hidden = o.disabled = !ok.includes(o.value); });
+    if (d.period && d.period !== state.period) { state.period = d.period; store.set('kads_period', d.period); }
+    $('#period').value = state.period;
   }
 
   function showPin(err) {
@@ -303,7 +339,7 @@
 
   function infoBody() {
     const M = C.meters;
-    return `<p style="font-size:13px;color:var(--text-2);margin:0 0 10px">Data ditarik terus dari Meta melalui Apps Script setiap kali dibuka (cache 5 minit). Tekan ⟳ untuk data paling baru.</p>
+    return `<p style="font-size:13px;color:var(--text-2);margin:0 0 10px">${state.data && state.data.source === 'sheet' ? 'Data ialah snapshot Meta yang diambil 4× sehari (8:39, 12:39, 4:39, 8:39 malam) dan disimpan dalam Google Sheet. Tempoh tersedia: sejak mula, hari ini, semalam, 7 hari lepas.' : 'Data ditarik terus dari Meta melalui Apps Script setiap kali dibuka (cache 5 minit). Tekan ⟳ untuk data paling baru.'}</p>
       <ul class="health">
         <li><b>Sasaran chat</b> = bajet harian ad set aktif ÷ ${rm(C.targets.costPerChat)} × hari aktif.</li>
         <li><b>Sasaran klik</b> = sasaran chat ÷ ${pct(C.targets.clickToChat)}.</li>

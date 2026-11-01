@@ -2,14 +2,19 @@
 
 Web app (PWA) untuk pantau prestasi iklan Meta (Facebook/Instagram, click-to-WhatsApp) KLIKI. Tema sama dengan KLIKI Marketing Dashboard.
 
-Data ditarik **terus dari Meta** melalui Apps Script setiap kali app dibuka (cache 5 minit). Repo ini public, jadi **tiada token, PIN atau data iklan disimpan di sini**: semuanya dalam Script Properties Apps Script.
+Apps Script ada dua mod sumber data:
+
+- **Mod snapshot (sekarang):** tugasan berjadual Claude tarik data Meta 4× sehari (8:39, 12:39, 16:39, 20:39 waktu Malaysia) melalui sambungan Meta Ads dan tulis ke Google Sheet *KLIKI Meta Ads Data* (tab `raw`). Apps Script baca sheet tu. Tempoh: sejak mula, hari ini, semalam, 7 hari lepas. Tak perlu token Meta.
+- **Mod live:** bila `META_TOKEN` diset dalam Script Properties, data ditarik terus dari Meta setiap kali app dibuka (cache 5 minit) dan semua 7 tempoh tersedia.
+
+Repo ini public, jadi **tiada token, PIN atau data iklan disimpan di sini**: semuanya dalam Script Properties dan sheet peribadi.
 
 ## Isi app
 
 | Tab | Isi |
 |---|---|
 | Ringkasan | Chat, kos sechat, belanja, klik → chat, 8 kad dengan bar prestasi (hijau / kuning / merah), chat per hari, chat ikut jam |
-| Outlet | Satu kad setiap ad set (outlet): belanja, chat, kos sechat dengan bar, klik, reach, frequency, CPM |
+| Outlet | Satu kad setiap outlet (ad set `OUTLET \| Kategori` digabung): belanja, chat, kos sechat dengan bar, dan pecahan setiap kategori |
 | Kategori | Kategori = padang, angle = pemain. Kos sechat setiap angle dalam padang yang sama, dan status pemenang (≥ 10 chat setiap angle, beza ≥ 20%) |
 | Iklan | Jadual semua iklan, boleh cari dan sort |
 
@@ -25,7 +30,7 @@ Semua dalam `js/config.js`:
 
 ## Setup (sekali sahaja)
 
-### 1. Token Meta
+### 1. Token Meta (pilihan, untuk mod live sahaja)
 Langkah dalam laman Meta mungkin berubah sedikit.
 1. Buka developers.facebook.com → **My Apps → Create App**, pilih jenis Business, tambah produk **Marketing API**.
 2. **Tools → Graph API Explorer**: pilih app tadi, *User Token*, tambah kebenaran **ads_read**, tekan **Generate Access Token** dan benarkan akses ke akaun iklan KLIKI Kedah.
@@ -40,12 +45,12 @@ Token ini beri akses baca ke akaun iklan. Jangan kongsi atau letak dalam repo.
 
    | Property | Nilai |
    |---|---|
-   | `META_TOKEN` | token dari langkah 1 |
+   | `META_TOKEN` | (pilihan) token dari langkah 1. Kosongkan untuk mod snapshot |
    | `AD_ACCOUNT_ID` | `2071524496317412` |
    | `APP_PIN` | PIN pilihan |
    | `TOKEN_EXPIRES` | tarikh tamat token, `YYYY-MM-DD` (app beri amaran 7 hari sebelum) |
 
-4. Pilih fungsi `testSetup` → **Run** → benarkan kebenaran. Execution log patut tunjuk `OK. Belanja RM…`.
+4. Pilih fungsi `testSetup` → **Run** → benarkan kebenaran. Execution log patut tunjuk `OK (sheet). Belanja RM…` atau `OK (live)…`.
 5. **Deploy → New deployment → Web app**. Execute as: **Me**. Who has access: **Anyone**. Salin URL Web App.
 6. Letak URL tu dalam `apiUrl` di `js/config.js`.
 
