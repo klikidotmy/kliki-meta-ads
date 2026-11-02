@@ -2,7 +2,7 @@
 (function (root) {
   root.CONFIG = {
     // URL Web App Apps Script "KLIKI Meta Ads API" (Deploy > Manage deployments). Kosong = app tunjuk panduan setup.
-    apiUrl: '',
+    apiUrl: 'https://script.google.com/macros/s/AKfycbxB9OTe7VSx0hYrIFjcOpag1xAQnXvjj4mIaQdXjn1txWTZWJ8uaE9HwebLQrsvykkN/exec',
 
     // Sasaran KLIKI (cadangan, ubah di sini). Bajet harian dibaca terus dari ad set aktif di Meta.
     targets: {
